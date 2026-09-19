@@ -1,5 +1,6 @@
 <?php
 session_start();
+$error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['mobile'])) {
         $_SESSION['temp_mobile'] = $_POST['mobile'];
@@ -22,19 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = json_decode($res, true);
         if (isset($data['ssoToken'])) {
             $_SESSION['ssoToken'] = $data['ssoToken'];
-            header("Location: index.php");
+            header("Location: index.html");
             exit;
+        } else {
+            $error = 'Invalid OTP. Try again.';
+            $step = 2;
         }
     }
 }
 ?>
 <!DOCTYPE html>
 <html>
-<head><title>Login - JioTV</title>
-<style>body{background:#0f0f0f;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}form{background:#181818;padding:30px;border-radius:8px;display:flex;flex-direction:column;gap:15px;width:300px;}input,button{padding:12px;border:none;border-radius:4px;}input{background:#222;color:#fff;}button{background:#00e676;font-weight:bold;cursor:pointer;}</style>
+<head>
+    <title>JioTV Login</title>
+    <style>body{background:#0f0f0f;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}form{background:#181818;padding:30px;border-radius:8px;display:flex;flex-direction:column;gap:15px;width:300px;}input,button{padding:12px;border:none;border-radius:4px;}input{background:#222;color:#fff;outline:none;}button{background:#00e676;font-weight:bold;cursor:pointer;}.error{color:#ff5252;font-size:12px;}</style>
 </head>
 <body>
 <form method="POST">
+    <?php if(!empty($error)): ?><span class="error"><?php echo $error; ?></span><?php endif; ?>
     <?php if (!isset($step)): ?>
         <h2>JioTV Login</h2>
         <input type="text" name="mobile" placeholder="Jio Mobile Number" required>
