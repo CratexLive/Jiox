@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JioTV Modern Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <style>
+        :root { --bg-primary: #0f0f0f; --bg-secondary: #181818; --accent: #00e676; --text-main: #fff; --border: #282828; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: var(--bg-primary); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 340px; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
+        .sidebar-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-header h2 { font-size: 18px; color: var(--accent); }
+        .search-container { padding: 12px; border-bottom: 1px solid var(--border); }
+        .search-box { width: 100%; padding: 10px; background: #222; border: 1px solid var(--border); color: #fff; border-radius: 6px; outline: none; }
+        .channel-list { flex: 1; overflow-y: auto; }
+        .channel-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #1f1f1f; gap: 12px; }
+        .channel-item:hover, .channel-item.active { background: #252525; }
+        .channel-item img { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; background: #000; }
+        .main-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .player-wrapper { width: 100%; max-width: 900px; border-radius: 8px; overflow: hidden; background: #000; }
+        video { width: 100%; aspect-ratio: 16/9; display: block; }
+        .player-info { width: 100%; max-width: 900px; margin-top: 15px; font-size: 18px; font-weight: bold; }
+        ::-webkit-scrollbar { width: 6px; }::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>JioTV Streams</h2>
+            <a href="playlist.php" style="color:var(--accent);text-decoration:none;font-size:14px;font-weight:bold;">M3U</a>
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-box" id="search" placeholder="Search channels..." onkeyup="filterChannels()">
+        </div>
+        <div class="channel-list" id="channelList">
+            <!-- Loaded via JavaScript -->
+        </div>
+    </div>
+    <div class="main-content">
+        <div class="player-wrapper">
+            <video id="player" controls crossorigin playsinline></video>
+        </div>
+        <div class="player-info" id="currentTitle">Select a channel to start</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script>
+        let player, hls, allChannels = [];
+        document.addEventListener("DOMContentLoaded", () => {
+            player = new Plyr(document.querySelector("#player"), { controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "fullscreen"] });
+            fetchChannels();
+        });
+
+        function fetchChannels() {
+            fetch('playlist.php?json=true').then(res => res.json()).then(data => {
+                allChannels = data;
+                renderChannels(allChannels);
+            }).catch(() => {
+                window.location.href = 'login.php';
+            });
+        }
+
+        function renderChannels(channels) {
+            const list = document.getElementById("channelList");
+            list.innerHTML = "";
+            channels.forEach(ch => {
+                const item = document.createElement("div");
+                item.className = "channel-item";
+                item.onclick = () => loadChannel(ch.id, ch.name, item);
+                item.innerHTML = `<img src="${ch.logo}" loading="lazy"><span>${ch.name}</span>`;
+                list.appendChild(item);
+            });
+        }
+
+        function loadChannel(id, name, element) {
+            document.querySelectorAll(".channel-item").forEach(el => el.classList.remove("active"));
+            element.classList.add("active");
+            document.getElementById("currentTitle").innerText = name;
+            fetch(`play.php?id=${id}`).then(res => res.text()).then(url => {
+                if(url.startsWith("http")) {
+                    const video = document.querySelector("#player");
+                    if (Hls.isSupported()) {
+                        if (hls) hls.destroy();
+                        hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+                    }
+                } else {
+                    alert("Session expired. Please login again.");
+                    window.location.href = 'login.php';
+                }
+            });
+        }
+
+        function filterChannels() {
+            let q = document.getElementById("search").value.toLowerCase();
+            let filtered = allChannels.filter(ch => ch.name.toLowerCase().includes(q));
+            renderChannels(filtered);
+        }
+    </script>
+</body>
+</html>
