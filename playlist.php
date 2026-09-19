@@ -1,10 +1,9 @@
 <?php
 session_start();
 if (!isset($_SESSION['ssoToken'])) {
-    exit("Unauthorized");
+    header("HTTP/1.1 401 Unauthorized");
+    exit;
 }
-header('Content-Type: audio/x-mpegurl');
-header('Content-Disposition: attachment; filename="jiotv.m3u"');
 
 $ch = curl_init("https://jiotv.jiocloud.com/apis/v1.3/getChannels?os=android&devicetype=phone");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -16,6 +15,22 @@ $response = curl_exec($ch);
 curl_close($ch);
 $data = json_decode($response, true);
 
+if(isset($_GET['json'])) {
+    header('Content-Type: application/json');
+    $output = [];
+    foreach ($data['result'] ?? [] as $channel) {
+        $output[] = [
+            'id' => $channel['channel_id'] ?? '',
+            'name' => $channel['channel_name'] ?? '',
+            'logo' => "https://jiotvimages.cdn.jio.com/dare_images/images/" . ($channel['logo'] ?? '')
+        ];
+    }
+    echo json_encode($output);
+    exit;
+}
+
+header('Content-Type: audio/x-mpegurl');
+header('Content-Disposition: attachment; filename="jiotv.m3u"');
 echo "#EXTM3U\n";
 foreach ($data['result'] ?? [] as $channel) {
     $name = $channel['channel_name'] ?? '';
